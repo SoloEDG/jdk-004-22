@@ -54,8 +54,22 @@ export interface RunStats {
   shots: number;
   byWeapon: Record<WeaponId, number>;
 }
+/** Effective damage/kills of one wave, independent of earlier waves. */
+export interface WaveRecord {
+  wave: number;
+  damage: number;
+  kills: number;
+}
+/** Counter snapshot taken when a wave begins. */
+export interface WaveStart {
+  wave: number;
+  damage: number;
+  kills: number;
+}
 export interface RunRecord {
+  /** Stable identity of the action. Imports merge on this, never on timestamps. */
   id: string;
+  playedAt?: number;
   duration: number;
   wave: number;
   level: number;
@@ -63,9 +77,23 @@ export interface RunRecord {
   damage: number;
   weapons: string[];
   victory: boolean;
+  /** Missing on archives written before per-wave telemetry existed. */
+  waves?: WaveRecord[];
 }
+export type BenchmarkMode = "waves" | "total";
+export interface BenchmarkState {
+  record: RunRecord;
+  /** "waves" when the archive carries per-wave telemetry, "total" otherwise. */
+  mode: BenchmarkMode;
+  lockedAt: number;
+}
+export type SaveStatus =
+  | { ok: true }
+  | { ok: false; reason: "quota" | "blocked"; pending: string };
 export interface GameDoc {
   version: 1;
+  /** Identity of this action; makes any repeated save a duplicate, not a new entry. */
+  runId: string;
   seed: number;
   initialSeed: number;
   nextId: number;
@@ -83,8 +111,18 @@ export interface GameDoc {
   pendingLevels: number;
   wave: number;
   waveTime: number;
+  /** Counters when the current wave began, so per-wave values exclude earlier waves. */
+  waveStart: WaveStart;
   spawnBudget: number;
   stats: RunStats;
+  /** Completed waves of this run, filled as each wave ends. */
+  waves: WaveRecord[];
+  /** Benchmark pinned when this run started; imports never swap it mid-run. */
+  benchmark: BenchmarkState | null;
+  /** Library selection, persisted across sessions; applied to the next run at start. */
+  selectedBenchmarkId: string | null;
+  /** Last persistence attempt, surfaced so a full store can offer a download. */
+  saveState: SaveStatus | null;
   records: RunRecord[];
   notice: string;
   victory: boolean;

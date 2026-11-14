@@ -1,7 +1,13 @@
 import type { GameDoc, RunRecord } from "./types";
-export function createRun(seed = 204004, records: RunRecord[] = []): GameDoc {
+export function createRun(
+  seed = 204004,
+  records: RunRecord[] = [],
+  runId: string = Math.random().toString(36).slice(2, 10),
+  selectedBenchmarkId: string | null = null,
+): GameDoc {
   return {
     version: 1,
+    runId,
     seed,
     initialSeed: seed,
     nextId: 1,
@@ -27,6 +33,7 @@ export function createRun(seed = 204004, records: RunRecord[] = []): GameDoc {
     pendingLevels: 0,
     wave: 0,
     waveTime: 0,
+    waveStart: { wave: 0, damage: 0, kills: 0 },
     spawnBudget: 0,
     stats: {
       kills: 0,
@@ -36,6 +43,12 @@ export function createRun(seed = 204004, records: RunRecord[] = []): GameDoc {
       shots: 0,
       byWeapon: { pulse: 0, orbit: 0, nova: 0 },
     },
+    waves: [],
+    benchmark: null,
+    selectedBenchmarkId: records.some((r) => r.id === selectedBenchmarkId)
+      ? selectedBenchmarkId
+      : null,
+    saveState: null,
     records,
     notice: "等待接入战场",
     victory: false,

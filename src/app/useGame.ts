@@ -1,11 +1,29 @@
 import { useEffect, useRef, useState } from "react";
 import { createRun } from "../shared/createRun";
-import type { Input } from "../shared/types";
+import type { Input, RunRecord } from "../shared/types";
 import { simulate } from "./simulate";
 import { chooseUpgrade } from "../features/progression";
-import { loadRecords, saveRecords } from "../features/results";
+import {
+  loadLibrary,
+  saveLibrary,
+  downloadText,
+  exportLibrary,
+  importArchive,
+  pinBenchmark,
+  selectBenchmark,
+  type ImportReport,
+  type LibrarySnapshot,
+} from "../features/results";
 export function useGame() {
-  const game = useRef(createRun(204004, loadRecords()));
+  const library = useRef<LibrarySnapshot>(loadLibrary());
+  const game = useRef(
+    createRun(
+      204004,
+      library.current.records,
+      undefined,
+      library.current.benchmarkId,
+    ),
+  );
   const input = useRef<Input>({
     x: 0,
     y: 0,
@@ -14,6 +32,8 @@ export function useGame() {
   });
   const keys = useRef(new Set<string>());
   const [, render] = useState(0);
+  // Bumping this state re-renders the archive dialog after selections and imports.
+  const [, bumpLibrary] = useState(0);
   useEffect(() => {
     let raf = 0,
       last = 0,
@@ -80,10 +100,18 @@ export function useGame() {
       document.removeEventListener("visibilitychange", hidden);
     };
   }, []);
+  const syncLibrary = () => {
+    library.current = {
+      records: game.current.records,
+      benchmarkId: game.current.selectedBenchmarkId,
+    };
+    bumpLibrary((n) => n + 1);
+  };
   return {
     game,
     input,
     start: () => {
+      pinBenchmark(game.current);
       game.current.phase = "playing";
     },
     toggle: () => {
@@ -92,11 +120,40 @@ export function useGame() {
       else if (d.phase === "paused") d.phase = "playing";
     },
     choose: (id: string) => chooseUpgrade(game.current, id),
+    select: (id: string | null) => {
+      selectBenchmark(game.current, id);
+      syncLibrary();
+    },
+    importFile: (text: string): ImportReport => {
+      const report = importArchive(game.current, text);
+      syncLibrary();
+      return report;
+    },
+    download: (filename: string) => {
+      const pending = game.current.saveState;
+      const text =
+        pending && !pending.ok ? pending.pending : exportLibrary(game.current);
+      return downloadText(text, filename);
+    },
+    retrySave: () => {
+      game.current.saveState = saveLibrary(
+        game.current.records,
+        game.current.selectedBenchmarkId,
+      );
+      render((n) => n + 1);
+    },
     restart: () => {
-      saveRecords(game.current.records);
-      game.current = createRun(204004, game.current.records);
+      saveLibrary(game.current.records, game.current.selectedBenchmarkId);
+      game.current = createRun(
+        204004,
+        game.current.records,
+        undefined,
+        game.current.selectedBenchmarkId,
+      );
+      pinBenchmark(game.current);
       keys.current.clear();
       game.current.phase = "playing";
     },
   };
 }
+export type { LibrarySnapshot, RunRecord };

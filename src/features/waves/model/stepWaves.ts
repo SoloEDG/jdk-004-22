@@ -1,5 +1,6 @@
 import type { GameDoc } from "../../../shared/types";
 import { distance, normalize } from "../../../shared/math";
+import { resetWaveStart } from "../../results/model/telemetry";
 import { spawnEnemy } from "../lib/spawn";
 import { ENEMY_CATALOG, WAVE_DURATION, TOTAL_WAVES } from "./catalog";
 export function stepWaves(doc: GameDoc, dt: number): void {
@@ -7,6 +8,7 @@ export function stepWaves(doc: GameDoc, dt: number): void {
   if (doc.wave === 0) {
     doc.wave = 1;
     doc.spawnBudget = 1;
+    resetWaveStart(doc);
     doc.notice = "第 1 波 · 信号已连接";
   }
   doc.waveTime += dt;

@@ -16,11 +16,22 @@ import { Battlefield, Vitals } from "../features/combat";
 import { WavePanel } from "../features/waves";
 import { ArsenalPanel } from "../features/arsenal";
 import { UpgradeDialog, ExperienceBar } from "../features/progression";
-import { StatsPanel, ResultDialog, HistoryPanel } from "../features/results";
+import { StatsPanel, ResultDialog, HistoryPanel, BenchmarkPanel } from "../features/results";
 import { formatTime } from "../shared/math";
 import { useAudio } from "./useAudio";
 export function App() {
-  const { game, input, start, toggle, choose, restart } = useGame();
+  const {
+    game,
+    input,
+    start,
+    toggle,
+    choose,
+    restart,
+    select,
+    importFile,
+    download,
+    retrySave,
+  } = useGame();
   const d = game.current;
   const [history, setHistory] = useState(false);
   const [help, setHelp] = useState(false);
@@ -190,10 +201,25 @@ export function App() {
                 <UpgradeDialog doc={d} choose={choose} />
               )}{" "}
               {d.phase === "ended" && (
-                <ResultDialog doc={d} restart={restart} />
+                <ResultDialog
+                  doc={d}
+                  restart={restart}
+                  downloadPending={() => download("void-signal-pending.json")}
+                />
               )}
             </div>
             <ExperienceBar doc={d} />
+            {d.saveState && !d.saveState.ok && d.phase !== "ended" && (
+              <div className="save-banner" role="status">
+                本地空间不足，最新战绩尚未保存。
+                <button className="link" onClick={retrySave}>
+                  重试保存
+                </button>
+                <button className="link" onClick={() => download("void-signal-pending.json")}>
+                  下载待保存内容
+                </button>
+              </div>
+            )}
             <div className="battle-footer">
               <span>
                 <kbd>W</kbd>
@@ -212,6 +238,7 @@ export function App() {
           <aside className="right-sidebar">
             <ArsenalPanel doc={d} />
             <StatsPanel doc={d} />
+            <BenchmarkPanel doc={d} />
             <div className="tip">
               <span>生存提示 / 01</span>
               <p>保持移动。拾取绿色能量晶体升级，组合武器与被动能力。</p>
@@ -231,7 +258,15 @@ export function App() {
         </footer>
       </main>
       {history && (
-        <HistoryPanel records={d.records} close={() => setHistory(false)} />
+        <HistoryPanel
+          doc={d}
+          actions={{
+            select,
+            importFile,
+            download,
+            close: () => setHistory(false),
+          }}
+        />
       )}{" "}
       {help && (
         <div className="overlay help-overlay">
